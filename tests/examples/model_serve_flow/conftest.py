@@ -126,6 +126,54 @@ def notebook_patcher():
     return _create_patcher
 
 
+def _cleanup_gpu_processes():
+    """Kill any leftover GPU processes to free memory.
+
+    This helps prevent OOM errors when starting vLLM.
+    """
+    try:
+        # Get list of GPU processes
+        result = subprocess.run(
+            ["nvidia-smi", "--query-compute-apps=pid", "--format=csv,noheader"],
+            capture_output=True,
+            text=True,
+            timeout=10,
+        )
+
+        if result.returncode != 0:
+            print("Warning: Could not query GPU processes")
+            return
+
+        pids = [p.strip() for p in result.stdout.strip().split("\n") if p.strip()]
+
+        if not pids:
+            print("No GPU processes found")
+            return
+
+        print(f"Found {len(pids)} GPU process(es): {pids}")
+
+        # Show what's using GPU memory
+        subprocess.run(["nvidia-smi"], timeout=10)
+
+        # Kill each process
+        for pid in pids:
+            try:
+                print(f"Killing GPU process {pid}...")
+                subprocess.run(["kill", "-9", pid], timeout=5)
+            except Exception as e:
+                print(f"Warning: Could not kill process {pid}: {e}")
+
+        # Wait a moment for processes to terminate
+        time.sleep(2)
+
+        print("GPU cleanup complete")
+
+    except FileNotFoundError:
+        print("nvidia-smi not found - skipping GPU cleanup")
+    except Exception as e:
+        print(f"Warning: GPU cleanup failed: {e}")
+
+
 class VLLMServer:
     """Context manager for vLLM server lifecycle."""
 
@@ -147,6 +195,9 @@ class VLLMServer:
 
     def start(self, timeout: int = 300) -> str:
         """Start vLLM server and wait for it to be ready."""
+        # Clean up any leftover GPU processes first
+        _cleanup_gpu_processes()
+
         cmd = [
             "vllm",
             "serve",
