@@ -59,6 +59,11 @@ class NotebookPatcher:
             if cell.cell_type != "code":
                 continue
 
+            # Skip the injected parameters cell to avoid self-referencing
+            cell_tags = cell.metadata.get("tags", [])
+            if "parameters" in cell_tags:
+                continue
+
             source = cell.source
             modified = False
 
