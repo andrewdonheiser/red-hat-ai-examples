@@ -250,19 +250,25 @@ pip install vllm guidellm openai requests
 **Run Tests:**
 
 ```bash
-# Run all model-serve-flow E2E tests
+# Run all model-serve-flow E2E tests (recommended - runs in dependency order)
 pytest tests/examples/model_serve_flow/ -v
 
-# Run specific test class
+# Run individual tests (must respect dependency order)
 pytest tests/examples/model_serve_flow/test_e2e_notebooks.py::TestBaseAccuracyBenchmarking -v
-pytest tests/examples/model_serve_flow/test_e2e_notebooks.py::TestModelCompression -v
 pytest tests/examples/model_serve_flow/test_e2e_notebooks.py::TestBasePerformanceBenchmarking -v
+pytest tests/examples/model_serve_flow/test_e2e_notebooks.py::TestModelCompression -v
+pytest tests/examples/model_serve_flow/test_e2e_notebooks.py::TestCompressedAccuracyBenchmarking -v
+pytest tests/examples/model_serve_flow/test_e2e_notebooks.py::TestCompressedPerformanceBenchmarking -v
 
 # Run tests by pattern (matches multiple tests)
 pytest tests/examples/model_serve_flow/test_e2e_notebooks.py -v -k "Accuracy"      # Both accuracy tests
 pytest tests/examples/model_serve_flow/test_e2e_notebooks.py -v -k "Performance"   # Both performance tests
 pytest tests/examples/model_serve_flow/test_e2e_notebooks.py -v -k "Compression"   # Compression test only
+pytest tests/examples/model_serve_flow/test_e2e_notebooks.py -v -k "Base"          # Both base model tests
+pytest tests/examples/model_serve_flow/test_e2e_notebooks.py -v -k "Compressed"    # All compressed model tests
 ```
+
+**Important:** Tests have dependencies. If you run `TestModelCompression` without first running `TestBaseAccuracyBenchmarking`, it will fail because the base model doesn't exist. Always run the full suite or respect the dependency order.
 
 **Environment Variables:**
 
