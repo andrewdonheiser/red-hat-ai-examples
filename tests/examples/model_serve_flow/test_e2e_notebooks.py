@@ -127,7 +127,7 @@ class TestBasePerformanceBenchmarking:
     @pytest.mark.timeout(3600)  # 1 hour
     @pytest.mark.requires_vllm
     @pytest.mark.requires_guidellm
-    @pytest.mark.dependency(name="base_performance", depends=["base_accuracy"])
+    @pytest.mark.dependency(name="base_performance")
     def test_base_performance_benchmark(
         self,
         model_serve_flow_path,
@@ -219,7 +219,7 @@ class TestModelCompression:
     @pytest.mark.e2e
     @pytest.mark.gpu
     @pytest.mark.timeout(7200)  # 2 hours
-    @pytest.mark.dependency(name="compression", depends=["base_accuracy"])
+    @pytest.mark.dependency(name="compression")
     def test_model_compression(
         self,
         model_serve_flow_path,
@@ -286,7 +286,7 @@ class TestCompressedAccuracyBenchmarking:
     @pytest.mark.e2e
     @pytest.mark.gpu
     @pytest.mark.timeout(14400)  # 4 hours
-    @pytest.mark.dependency(name="compressed_accuracy", depends=["compression"])
+    @pytest.mark.dependency(name="compressed_accuracy")
     def test_compressed_accuracy(
         self,
         model_serve_flow_path,
@@ -352,7 +352,7 @@ class TestCompressedPerformanceBenchmarking:
     @pytest.mark.timeout(3600)  # 1 hour
     @pytest.mark.requires_vllm
     @pytest.mark.requires_guidellm
-    @pytest.mark.dependency(name="compressed_performance", depends=["compression"])
+    @pytest.mark.dependency(name="compressed_performance")
     def test_compressed_performance_benchmark(
         self,
         model_serve_flow_path,
