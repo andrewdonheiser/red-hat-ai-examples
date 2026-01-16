@@ -354,11 +354,10 @@ def run_guidellm_benchmark(
     env = os.environ.copy()
     env["GUIDELLM_NUM_WORKERS"] = "1"
 
-    # Use sweep profile with reduced sweep size for testing
-    # Notebook uses default (10 benchmarks), we use 3 to reduce test time
-    # Each benchmark runs for max_seconds, so total time = sweep_size * max_seconds
-    sweep_size = 3  # synchronous + throughput + 1 constant rate
-    total_timeout = (sweep_size + 2) * max_seconds + 120  # Extra buffer
+    # Use exact same parameters as notebook (no --rate flag)
+    # Generous timeout: 1 hour to handle slower hardware
+    # Default sweep runs 10 benchmarks, each for max_seconds
+    timeout_seconds = 3600  # 1 hour
 
     cmd = [
         "guidellm",
@@ -366,7 +365,6 @@ def run_guidellm_benchmark(
         "--target",
         target_url,
         "--profile", "sweep",
-        "--rate", str(sweep_size),  # Number of benchmarks in sweep
         "--max-seconds",
         str(max_seconds),
         "--data",
@@ -377,8 +375,8 @@ def run_guidellm_benchmark(
 
     print(f"Running GuideLLM: {' '.join(cmd)}")
     print(f"Environment: GUIDELLM_NUM_WORKERS=1")
-    print(f"Expected duration: ~{sweep_size * max_seconds}s, timeout: {total_timeout}s")
-    result = subprocess.run(cmd, capture_output=True, text=True, timeout=total_timeout, env=env)
+    print(f"Timeout: {timeout_seconds}s (1 hour)")
+    result = subprocess.run(cmd, capture_output=True, text=True, timeout=timeout_seconds, env=env)
 
     if result.returncode != 0:
         print(f"GuideLLM stdout: {result.stdout}")
