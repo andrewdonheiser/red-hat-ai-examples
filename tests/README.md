@@ -275,7 +275,10 @@ pytest tests/examples/model_serve_flow/test_e2e_notebooks.py -v -k "Compressed" 
 | Variable | Description | Default |
 |----------|-------------|---------|
 | `TEST_MODEL_NAME` | HuggingFace model to test | `RedHatAI/Llama-3.1-8B-Instruct` |
-| `KEEP_TEST_ARTIFACTS` | Keep model artifacts after tests (set to `1`) | `0` (cleanup) |
+| `MODEL_SERVE_TEST_DIR` | Directory for test artifacts | `/tmp/model_serve_e2e_tests` |
+| `CLEANUP_TEST_ARTIFACTS` | Clean up artifacts after session (set to `1`) | `0` (keep) |
+
+> **Note:** Artifacts are kept by default to support running tests across multiple sessions. Set `CLEANUP_TEST_ARTIFACTS=1` to clean up after all tests complete.
 
 **Test Dependency Graph:**
 

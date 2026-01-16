@@ -66,9 +66,22 @@ def model_serve_flow_path(repo_root) -> Path:
 
 
 @pytest.fixture(scope="session")
-def test_output_dir(tmp_path_factory) -> Path:
-    """Session-scoped directory for all test outputs."""
-    return tmp_path_factory.mktemp("model_serve_e2e")
+def test_output_dir() -> Path:
+    """Session-scoped directory for all test outputs.
+
+    Uses a persistent location so artifacts survive across pytest sessions.
+    Override with MODEL_SERVE_TEST_DIR environment variable.
+    """
+    # Allow override via environment variable
+    env_path = os.environ.get("MODEL_SERVE_TEST_DIR")
+    if env_path:
+        path = Path(env_path)
+    else:
+        # Use a fixed location that persists across sessions
+        path = Path("/tmp/model_serve_e2e_tests")
+
+    path.mkdir(parents=True, exist_ok=True)
+    return path
 
 
 @pytest.fixture(scope="session")
@@ -247,12 +260,14 @@ def guidellm_runner():
 def cleanup_artifacts(test_output_dir):
     """Clean up test artifacts after test session completes.
 
-    Artifacts are preserved if KEEP_TEST_ARTIFACTS=1 is set (useful for debugging).
+    By default, artifacts are KEPT to support running tests across sessions.
+    Set CLEANUP_TEST_ARTIFACTS=1 to clean up after the session.
     """
     yield
 
-    if os.environ.get("KEEP_TEST_ARTIFACTS", "0") == "1":
+    if os.environ.get("CLEANUP_TEST_ARTIFACTS", "0") != "1":
         print(f"Keeping test artifacts at: {test_output_dir}")
+        print("Set CLEANUP_TEST_ARTIFACTS=1 to clean up after tests.")
         return
 
     # Clean up large model artifacts to prevent disk space issues
