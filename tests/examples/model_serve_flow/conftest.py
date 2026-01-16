@@ -221,10 +221,16 @@ class VLLMServer:
         ]
 
         print(f"Starting vLLM server: {' '.join(cmd)}")
+
+        # Run vLLM like in the notebook - output to terminal, not captured
+        # Capturing stdout can cause buffer issues that affect server behavior
+        self.log_file = open("/tmp/vllm_server.log", "w")
         self.process = subprocess.Popen(
             cmd,
-            stdout=subprocess.PIPE,
+            stdout=self.log_file,
             stderr=subprocess.STDOUT,
+            # Don't buffer output
+            bufsize=0,
         )
 
         self._wait_for_ready(timeout)
@@ -244,10 +250,13 @@ class VLLMServer:
         while time.time() - start < timeout:
             # Check if process crashed
             if self.process.poll() is not None:
-                # Capture output for debugging
+                # Read output from log file for debugging
                 output = ""
-                if self.process.stdout:
-                    output = self.process.stdout.read().decode("utf-8", errors="ignore")
+                try:
+                    with open("/tmp/vllm_server.log", "r") as f:
+                        output = f.read()
+                except Exception:
+                    pass
                 raise RuntimeError(
                     f"vLLM server process exited with code {self.process.returncode}\n"
                     f"Server output:\n{output}"
@@ -293,6 +302,11 @@ class VLLMServer:
             except subprocess.TimeoutExpired:
                 self.process.kill()
             self.process = None
+
+        # Close log file
+        if hasattr(self, "log_file") and self.log_file:
+            self.log_file.close()
+            self.log_file = None
 
 
 @pytest.fixture
