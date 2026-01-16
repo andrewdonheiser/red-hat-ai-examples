@@ -331,10 +331,8 @@ def run_guidellm_benchmark(
         "benchmark",
         "--target",
         target_url,  # Just base URL, not /v1/completions
-        "--rate", "1",  # Start with 1 request/sec for testing
         "--max-seconds",
         str(max_seconds),
-        "--max-requests", "10",  # Limit requests for testing
         "--data",
         f"prompt_tokens={prompt_tokens},output_tokens={output_tokens}",
         "--output-path",
