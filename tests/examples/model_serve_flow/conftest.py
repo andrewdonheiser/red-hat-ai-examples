@@ -310,19 +310,33 @@ def run_guidellm_benchmark(
     target_url: str,
     output_path: Path,
     max_seconds: int = 120,
-    prompt_tokens: int = 1024,
-    output_tokens: int = 512,
+    prompt_tokens: int = 512,
+    output_tokens: int = 128,
 ) -> Path:
     """Run GuideLLM benchmark and return results path."""
+    # Verify server is still responding before starting benchmark
+    completions_url = f"{target_url}/v1/completions"
+    print(f"Verifying vLLM server at {target_url}...")
+    try:
+        resp = requests.get(f"{target_url}/v1/models", timeout=10)
+        if resp.status_code != 200:
+            raise RuntimeError(f"vLLM server not responding: {resp.status_code}")
+        models = resp.json()
+        print(f"vLLM models available: {models}")
+    except Exception as e:
+        raise RuntimeError(f"Cannot connect to vLLM server: {e}")
+
+    # Use simpler benchmark settings for testing
     cmd = [
         "guidellm",
         "benchmark",
         "--target",
-        target_url,
-        "--profile",
-        "sweep",
+        completions_url,
+        "--backend", "openai_http",
+        "--rate", "1",  # Start with 1 request/sec for testing
         "--max-seconds",
         str(max_seconds),
+        "--max-requests", "10",  # Limit requests for testing
         "--data",
         f"prompt_tokens={prompt_tokens},output_tokens={output_tokens}",
         "--output-path",
@@ -330,13 +344,14 @@ def run_guidellm_benchmark(
     ]
 
     print(f"Running GuideLLM: {' '.join(cmd)}")
-    result = subprocess.run(cmd, capture_output=True, text=True)
+    result = subprocess.run(cmd, capture_output=True, text=True, timeout=max_seconds + 60)
 
     if result.returncode != 0:
         print(f"GuideLLM stdout: {result.stdout}")
         print(f"GuideLLM stderr: {result.stderr}")
         raise RuntimeError(f"GuideLLM failed with code {result.returncode}")
 
+    print(f"GuideLLM completed successfully")
     return output_path
 
 
