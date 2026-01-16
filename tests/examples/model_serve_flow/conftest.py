@@ -198,6 +198,10 @@ class VLLMServer:
         # Clean up any leftover GPU processes first
         _cleanup_gpu_processes()
 
+        # Use exact same parameters as the notebook:
+        # vllm serve "../base_model/..." --host 127.0.0.1 --port 8000 \
+        #   --gpu-memory-utilization 0.6 --tensor-parallel-size 1 \
+        #   --pipeline-parallel-size 1 --max-model-len 2048
         cmd = [
             "vllm",
             "serve",
@@ -209,6 +213,8 @@ class VLLMServer:
             "--gpu-memory-utilization",
             str(self.gpu_memory_utilization),
             "--tensor-parallel-size",
+            "1",
+            "--pipeline-parallel-size",
             "1",
             "--max-model-len",
             str(self.max_model_len),
