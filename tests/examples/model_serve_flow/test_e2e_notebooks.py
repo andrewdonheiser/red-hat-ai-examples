@@ -159,8 +159,12 @@ class TestBasePerformanceBenchmarking:
         server_url = server.start()
 
         try:
-            # Run GuideLLM benchmark
-            benchmark_output = results_dir / "base_performance_benchmarks.json"
+            # Run GuideLLM benchmark - write to path notebook expects
+            # Notebook expects ../results/base_performance_benchmarks.json relative to notebook dir
+            notebook_results_dir = model_serve_flow_path / "results"
+            notebook_results_dir.mkdir(parents=True, exist_ok=True)
+            benchmark_output = notebook_results_dir / "base_performance_benchmarks.json"
+
             guidellm_runner(
                 target_url=server_url,
                 output_path=benchmark_output,
@@ -171,7 +175,6 @@ class TestBasePerformanceBenchmarking:
             test_params = {
                 "base_model_path": str(base_path),
                 "vllm_target": server_url,
-                "benchmark_results_path": str(benchmark_output),
             }
 
             patcher = notebook_patcher(notebook_path)
@@ -179,8 +182,6 @@ class TestBasePerformanceBenchmarking:
             patcher.replace_hardcoded_paths(
                 {
                     "base_model_path": "base_model_path",
-                    # Replace the results path so notebook finds our output
-                    "../results/base_performance_benchmarks.json": "benchmark_results_path",
                 }
             )
             # Skip vLLM serve and GuideLLM benchmark cells (we ran them externally)
@@ -387,8 +388,12 @@ class TestCompressedPerformanceBenchmarking:
         server_url = server.start()
 
         try:
-            # Run GuideLLM
-            benchmark_output = results_dir / "compressed_performance_benchmarks.json"
+            # Run GuideLLM - write to path notebook expects
+            # Notebook expects ../results/compressed_performance_benchmarks.json relative to notebook dir
+            notebook_results_dir = model_serve_flow_path / "results"
+            notebook_results_dir.mkdir(parents=True, exist_ok=True)
+            benchmark_output = notebook_results_dir / "compressed_performance_benchmarks.json"
+
             guidellm_runner(
                 target_url=server_url,
                 output_path=benchmark_output,
@@ -399,7 +404,6 @@ class TestCompressedPerformanceBenchmarking:
             test_params = {
                 "compressed_model_path": str(compressed_path),
                 "vllm_target": server_url,
-                "benchmark_results_path": str(benchmark_output),
             }
 
             patcher = notebook_patcher(notebook_path)
@@ -407,8 +411,6 @@ class TestCompressedPerformanceBenchmarking:
             patcher.replace_hardcoded_paths(
                 {
                     "compressed_model_path": "compressed_model_path",
-                    # Replace the results path so notebook finds our output
-                    "../results/compressed_performance_benchmarks.json": "benchmark_results_path",
                 }
             )
             patcher.skip_cells_matching(
