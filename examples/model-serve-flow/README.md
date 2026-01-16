@@ -19,6 +19,75 @@ git clone https://github.com/red-hat-data-services/red-hat-ai-examples.git
 cd red-hat-ai-examples/examples/model-serve-flow
 ```
 
+## Running Tests
+
+This project includes end-to-end tests that validate the complete workflow. The tests require a GPU with sufficient VRAM (~16GB+) to load and evaluate the 8B parameter model.
+
+### Prerequisites
+
+- Python 3.12+
+- NVIDIA GPU with CUDA support
+- Sufficient GPU memory (~16GB+ VRAM)
+
+### Install Test Dependencies
+
+```bash
+# From the repository root
+cd red-hat-ai-examples
+
+# Install base test dependencies
+pip install -e ".[test]"
+pip install papermill nbformat ipykernel
+
+# Install ML dependencies for accuracy tests
+pip install torch transformers lm-eval accelerate llmcompressor datasets
+
+# Install serving dependencies for performance tests (optional)
+pip install vllm guidellm openai requests
+```
+
+### Run Tests
+
+```bash
+# Run all model-serve-flow E2E tests
+pytest tests/examples/model_serve_flow/ -v
+
+# Run only accuracy benchmarking tests
+pytest tests/examples/model_serve_flow/test_e2e_notebooks.py -v -k "Accuracy"
+
+# Run only performance benchmarking tests
+pytest tests/examples/model_serve_flow/test_e2e_notebooks.py -v -k "Performance"
+
+# Run model compression test
+pytest tests/examples/model_serve_flow/test_e2e_notebooks.py -v -k "Compression"
+```
+
+### Test Configuration
+
+You can customize the model being tested via environment variables:
+
+```bash
+# Use a different model
+export TEST_MODEL_NAME="meta-llama/Llama-3.1-8B-Instruct"
+
+# Keep test artifacts for debugging (default: artifacts are cleaned up)
+export KEEP_TEST_ARTIFACTS=1
+
+pytest tests/examples/model_serve_flow/ -v
+```
+
+### Test Dependency Graph
+
+The tests have dependencies and run in order:
+
+```text
+test_base_accuracy_full
+    ├── test_base_performance_benchmark (needs base_model)
+    └── test_model_compression (needs base_model)
+            ├── test_compressed_accuracy (needs compressed_model)
+            └── test_compressed_performance_benchmark (needs compressed_model)
+```
+
 ## Detailed Step-by-Step Workflow
 
 ### Step 1. Baseline Accuracy Evaluation (Base Model)
