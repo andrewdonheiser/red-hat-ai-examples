@@ -1,0 +1,56 @@
+# Project Rules for red-hat-ai-examples
+
+## Test Parameter Consistency
+
+When writing or modifying tests for notebooks, **always match the exact parameters used in the notebooks**. Do not reduce, modify, or "optimize" parameters for testing purposes.
+
+### vLLM Server Parameters
+Must match the notebook exactly:
+```bash
+vllm serve <model_path> \
+  --host 127.0.0.1 \
+  --port 8000 \
+  --gpu-memory-utilization 0.6 \
+  --tensor-parallel-size 1 \
+  --pipeline-parallel-size 1 \
+  --max-model-len 2048
+```
+
+### GuideLLM Benchmark Parameters
+Must match the notebook exactly:
+```bash
+guidellm benchmark \
+  --target "http://127.0.0.1:8000" \
+  --profile sweep \
+  --max-seconds 120 \
+  --data "prompt_tokens=1024,output_tokens=512" \
+  --output-path "<results_path>"
+```
+
+### Package Versions
+Pin versions to match notebook pyproject.toml files:
+- `vllm>=0.11.0`
+- `guidellm==0.5.0`
+- `openai==2.8.1`
+
+### Timeouts
+Use generous timeouts to handle slower hardware:
+- vLLM startup: 300 seconds (5 minutes)
+- GuideLLM benchmark: 3600 seconds (1 hour)
+
+### Why This Matters
+- Tests should validate that notebooks work as documented
+- Changing parameters means we're not testing what users will actually run
+- Version mismatches can cause different behavior (e.g., GuideLLM sweep profile changes)
+
+## Database Changes
+- Ensure migrations exist for all database schema changes
+- Update backup/restore scripts when schema changes
+
+## Documentation
+- Keep documentation up to date with code changes
+- If there's an established style for similar implementations, follow it
+
+## Code Style
+- Follow existing patterns in the codebase
+- Keep implementations uniform across similar features
