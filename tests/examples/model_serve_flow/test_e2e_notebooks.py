@@ -1,0 +1,405 @@
+"""End-to-end tests for model-serve-flow notebooks using test-time patching.
+
+Tests use pytest-dependency to ensure correct execution order since notebooks
+produce artifacts consumed by later tests.
+
+Dependency graph:
+    test_base_accuracy_full
+        ├── test_base_performance_benchmark (needs base_model)
+        └── test_model_compression (needs base_model)
+                ├── test_compressed_accuracy (needs compressed_model)
+                └── test_compressed_performance_benchmark (needs compressed_model)
+"""
+import json
+import os
+from pathlib import Path
+
+import papermill as pm
+import pytest
+
+from .notebook_patcher import NotebookPatcher, NOTEBOOK_PATCHES
+
+
+class TestBaseAccuracyBenchmarking:
+    """E2E tests for 01_Base_Accuracy_Benchmarking notebook."""
+
+    NOTEBOOK_DIR = "01_Base_Accuracy_Benchmarking"
+    NOTEBOOK_NAME = "Base_Accuracy_Benchmarking.ipynb"
+
+    @pytest.mark.e2e
+    @pytest.mark.gpu
+    @pytest.mark.timeout(14400)  # 4 hours
+    @pytest.mark.dependency(name="base_accuracy")
+    def test_base_accuracy_full(
+        self,
+        model_serve_flow_path,
+        base_model_dir,
+        results_dir,
+        executed_notebooks_dir,
+        notebook_patcher,
+    ):
+        """Run base accuracy benchmarking with patched notebook."""
+        notebook_path = model_serve_flow_path / self.NOTEBOOK_DIR / self.NOTEBOOK_NAME
+
+        # Get model name from env or use default
+        model_name = os.environ.get(
+            "TEST_MODEL_NAME", "RedHatAI/Llama-3.1-8B-Instruct"
+        )
+        model_subdir = model_name.replace("/", "-")
+
+        # Define test parameters
+        test_params = {
+            "model_name": model_name,
+            "base_model_path": str(base_model_dir / model_subdir),
+            "base_results_dir": str(results_dir / "base_accuracy"),
+            "tasks": json.dumps(["arc_easy"]),  # Reduced for testing
+        }
+
+        # Patch notebook
+        patcher = notebook_patcher(notebook_path)
+        patcher.inject_parameters_cell(test_params)
+        patcher.replace_hardcoded_paths(
+            {
+                "model_name": "model_name",
+                "base_model_path": "base_model_path",
+                "base_results_dir": "base_results_dir",
+                "tasks": "tasks",
+            }
+        )
+        patcher.skip_cells_matching([r"!pip install"])
+
+        # Save patched notebook
+        patched_path = executed_notebooks_dir / f"patched_{self.NOTEBOOK_NAME}"
+        patcher.save_to(patched_path)
+
+        # Execute
+        output_path = executed_notebooks_dir / f"executed_{self.NOTEBOOK_NAME}"
+        pm.execute_notebook(
+            str(patched_path),
+            str(output_path),
+            cwd=str(notebook_path.parent),
+            kernel_name="python3",
+        )
+
+        # Verify outputs
+        assert Path(test_params["base_model_path"]).exists(), "Base model not saved"
+        assert (
+            Path(test_params["base_results_dir"]) / "results.pkl"
+        ).exists(), "Results not saved"
+
+
+class TestBasePerformanceBenchmarking:
+    """E2E tests for 02_Base_Performance_Benchmarking notebook.
+
+    This test:
+    1. Starts vLLM server externally
+    2. Runs GuideLLM benchmark externally
+    3. Runs notebook to verify results loading (with skipped CLI cells)
+
+    Depends on: test_base_accuracy_full (provides base_model)
+    """
+
+    NOTEBOOK_DIR = "02_Base_Performance_Benchmarking"
+    NOTEBOOK_NAME = "Base_Performance_Benchmarking.ipynb"
+
+    @pytest.mark.e2e
+    @pytest.mark.gpu
+    @pytest.mark.timeout(3600)  # 1 hour
+    @pytest.mark.requires_vllm
+    @pytest.mark.requires_guidellm
+    @pytest.mark.dependency(name="base_performance", depends=["base_accuracy"])
+    def test_base_performance_benchmark(
+        self,
+        model_serve_flow_path,
+        base_model_dir,
+        results_dir,
+        executed_notebooks_dir,
+        notebook_patcher,
+        vllm_server_factory,
+        guidellm_runner,
+    ):
+        """Run base performance benchmarking with external vLLM/GuideLLM."""
+        notebook_path = model_serve_flow_path / self.NOTEBOOK_DIR / self.NOTEBOOK_NAME
+
+        # Find base model (should exist from previous test)
+        model_name = os.environ.get(
+            "TEST_MODEL_NAME", "RedHatAI/Llama-3.1-8B-Instruct"
+        )
+        model_subdir = model_name.replace("/", "-")
+        model_path = base_model_dir / model_subdir
+
+        assert model_path.exists(), f"Base model not found at {model_path}"
+
+        # Start vLLM server
+        server = vllm_server_factory(
+            model_path=model_path,
+            port=8000,
+            gpu_memory_utilization=0.6,
+        )
+        server_url = server.start()
+
+        # Run GuideLLM benchmark
+        benchmark_output = results_dir / "base_performance_benchmarks.json"
+        guidellm_runner(
+            target_url=server_url,
+            output_path=benchmark_output,
+            max_seconds=60,  # Reduced for testing
+        )
+
+        # Patch and run notebook for results loading/verification
+        test_params = {
+            "base_model_path": str(model_path),
+            "vllm_target": server_url,
+        }
+
+        patcher = notebook_patcher(notebook_path)
+        patcher.inject_parameters_cell(test_params)
+        patcher.replace_hardcoded_paths(
+            {
+                "base_model_path": "base_model_path",
+            }
+        )
+        # Skip vLLM serve and GuideLLM benchmark cells (we ran them externally)
+        patcher.skip_cells_matching(
+            [
+                r"!pip install",
+                r"vllm serve",
+                r"guidellm benchmark",
+            ]
+        )
+
+        patched_path = executed_notebooks_dir / f"patched_{self.NOTEBOOK_NAME}"
+        patcher.save_to(patched_path)
+
+        output_path = executed_notebooks_dir / f"executed_{self.NOTEBOOK_NAME}"
+        pm.execute_notebook(
+            str(patched_path),
+            str(output_path),
+            cwd=str(notebook_path.parent),
+            kernel_name="python3",
+        )
+
+        # Verify benchmark results exist
+        assert benchmark_output.exists(), "Benchmark results not created"
+
+        # Stop server
+        server.stop()
+
+
+class TestModelCompression:
+    """E2E tests for 03_Model_Compression notebook.
+
+    Depends on: test_base_accuracy_full (provides base_model)
+    """
+
+    NOTEBOOK_DIR = "03_Model_Compression"
+    NOTEBOOK_NAME = "Model_Compression.ipynb"
+
+    @pytest.mark.e2e
+    @pytest.mark.gpu
+    @pytest.mark.timeout(7200)  # 2 hours
+    @pytest.mark.dependency(name="compression", depends=["base_accuracy"])
+    def test_model_compression(
+        self,
+        model_serve_flow_path,
+        base_model_dir,
+        compressed_model_dir,
+        executed_notebooks_dir,
+        notebook_patcher,
+    ):
+        """Run model compression with patched notebook."""
+        notebook_path = model_serve_flow_path / self.NOTEBOOK_DIR / self.NOTEBOOK_NAME
+
+        model_name = os.environ.get(
+            "TEST_MODEL_NAME", "RedHatAI/Llama-3.1-8B-Instruct"
+        )
+        model_subdir = model_name.replace("/", "-")
+        base_path = base_model_dir / model_subdir
+        compressed_path = compressed_model_dir / f"{model_subdir}-int8-dynamic"
+
+        assert base_path.exists(), f"Base model not found at {base_path}"
+
+        test_params = {
+            "base_model_path": str(base_path),
+            "compressed_model_path": str(compressed_path),
+            "num_calibration_samples": 64,  # Reduced for testing
+            "max_sequence_length": 512,  # Reduced for testing
+        }
+
+        patcher = notebook_patcher(notebook_path)
+        patcher.inject_parameters_cell(test_params)
+        patcher.replace_hardcoded_paths(
+            {
+                "base_model_path": "base_model_path",
+                "compressed_model_path": "compressed_model_path",
+            }
+        )
+        patcher.skip_cells_matching([r"!pip install"])
+
+        patched_path = executed_notebooks_dir / f"patched_{self.NOTEBOOK_NAME}"
+        patcher.save_to(patched_path)
+
+        output_path = executed_notebooks_dir / f"executed_{self.NOTEBOOK_NAME}"
+        pm.execute_notebook(
+            str(patched_path),
+            str(output_path),
+            cwd=str(notebook_path.parent),
+            kernel_name="python3",
+        )
+
+        # Verify compressed model
+        assert compressed_path.exists(), "Compressed model not created"
+        assert (compressed_path / "config.json").exists(), "Model config not found"
+
+
+class TestCompressedAccuracyBenchmarking:
+    """E2E tests for 04_Compressed_Accuracy_Benchmarking notebook.
+
+    Depends on: test_model_compression (provides compressed_model)
+    """
+
+    NOTEBOOK_DIR = "04_Compressed_Accuracy_Benchmarking"
+    NOTEBOOK_NAME = "Compressed_Accuracy_Benchmarking.ipynb"
+
+    @pytest.mark.e2e
+    @pytest.mark.gpu
+    @pytest.mark.timeout(14400)  # 4 hours
+    @pytest.mark.dependency(name="compressed_accuracy", depends=["compression"])
+    def test_compressed_accuracy(
+        self,
+        model_serve_flow_path,
+        compressed_model_dir,
+        results_dir,
+        executed_notebooks_dir,
+        notebook_patcher,
+    ):
+        """Run compressed accuracy benchmarking."""
+        notebook_path = model_serve_flow_path / self.NOTEBOOK_DIR / self.NOTEBOOK_NAME
+
+        model_name = os.environ.get(
+            "TEST_MODEL_NAME", "RedHatAI/Llama-3.1-8B-Instruct"
+        )
+        model_subdir = f"{model_name.replace('/', '-')}-int8-dynamic"
+        compressed_path = compressed_model_dir / model_subdir
+
+        assert (
+            compressed_path.exists()
+        ), f"Compressed model not found at {compressed_path}"
+
+        test_params = {
+            "compressed_model_path": str(compressed_path),
+            "compressed_results_dir": str(results_dir / "compressed_accuracy"),
+            "tasks": json.dumps(["arc_easy"]),
+        }
+
+        patcher = notebook_patcher(notebook_path)
+        patcher.inject_parameters_cell(test_params)
+        patcher.replace_hardcoded_paths(
+            {
+                "compressed_model_path": "compressed_model_path",
+                "compressed_results_dir": "compressed_results_dir",
+                "tasks": "tasks",
+            }
+        )
+        patcher.skip_cells_matching([r"!pip install"])
+
+        patched_path = executed_notebooks_dir / f"patched_{self.NOTEBOOK_NAME}"
+        patcher.save_to(patched_path)
+
+        output_path = executed_notebooks_dir / f"executed_{self.NOTEBOOK_NAME}"
+        pm.execute_notebook(
+            str(patched_path),
+            str(output_path),
+            cwd=str(notebook_path.parent),
+            kernel_name="python3",
+        )
+
+        assert (Path(test_params["compressed_results_dir"]) / "results.pkl").exists()
+
+
+class TestCompressedPerformanceBenchmarking:
+    """E2E tests for 05_Compressed_Performance_Benchmarking notebook.
+
+    Depends on: test_model_compression (provides compressed_model)
+    """
+
+    NOTEBOOK_DIR = "05_Compressed_Performance_Benchmarking"
+    NOTEBOOK_NAME = "Compressed_Performance_Benchmarking.ipynb"
+
+    @pytest.mark.e2e
+    @pytest.mark.gpu
+    @pytest.mark.timeout(3600)  # 1 hour
+    @pytest.mark.requires_vllm
+    @pytest.mark.requires_guidellm
+    @pytest.mark.dependency(name="compressed_performance", depends=["compression"])
+    def test_compressed_performance_benchmark(
+        self,
+        model_serve_flow_path,
+        compressed_model_dir,
+        results_dir,
+        executed_notebooks_dir,
+        notebook_patcher,
+        vllm_server_factory,
+        guidellm_runner,
+    ):
+        """Run compressed performance benchmarking."""
+        notebook_path = model_serve_flow_path / self.NOTEBOOK_DIR / self.NOTEBOOK_NAME
+
+        model_name = os.environ.get(
+            "TEST_MODEL_NAME", "RedHatAI/Llama-3.1-8B-Instruct"
+        )
+        model_subdir = f"{model_name.replace('/', '-')}-int8-dynamic"
+        compressed_path = compressed_model_dir / model_subdir
+
+        assert compressed_path.exists(), "Compressed model not found"
+
+        # Start vLLM server on different port
+        server = vllm_server_factory(
+            model_path=compressed_path,
+            port=8001,
+            gpu_memory_utilization=0.6,
+        )
+        server_url = server.start()
+
+        # Run GuideLLM
+        benchmark_output = results_dir / "compressed_performance_benchmarks.json"
+        guidellm_runner(
+            target_url=server_url,
+            output_path=benchmark_output,
+            max_seconds=60,
+        )
+
+        # Run notebook for verification
+        test_params = {
+            "compressed_model_path": str(compressed_path),
+            "vllm_target": server_url,
+        }
+
+        patcher = notebook_patcher(notebook_path)
+        patcher.inject_parameters_cell(test_params)
+        patcher.replace_hardcoded_paths(
+            {
+                "compressed_model_path": "compressed_model_path",
+            }
+        )
+        patcher.skip_cells_matching(
+            [
+                r"!pip install",
+                r"vllm serve",
+                r"guidellm benchmark",
+            ]
+        )
+
+        patched_path = executed_notebooks_dir / f"patched_{self.NOTEBOOK_NAME}"
+        patcher.save_to(patched_path)
+
+        output_path = executed_notebooks_dir / f"executed_{self.NOTEBOOK_NAME}"
+        pm.execute_notebook(
+            str(patched_path),
+            str(output_path),
+            cwd=str(notebook_path.parent),
+            kernel_name="python3",
+        )
+
+        assert benchmark_output.exists()
+        server.stop()

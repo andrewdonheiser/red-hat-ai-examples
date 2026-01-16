@@ -16,6 +16,11 @@ test = [
     "jupyter>=1.1.0",
     "ipykernel>=6.29.0",
     "polars>=1.17.0",
+    "papermill>=2.6.0",
+    "kfp>=2.7.0",
+    "requests>=2.31.0",
+    "pytest-dependency>=0.6.0",
+    "pytest-timeout>=2.3.0",
 ]
 
 dev = [

@@ -1,0 +1,59 @@
+# Custom values for GPU-enabled GitHub Actions Runner
+template:
+  spec:
+    serviceAccountName: arc-runner-sa
+
+    # Schedule on GPU nodes only
+    nodeSelector:
+      nvidia.com/gpu.product: NVIDIA-L40S
+
+    # Tolerate GPU taints
+    tolerations:
+      - key: nvidia.com/gpu
+        operator: Exists
+        effect: NoSchedule
+
+    containers:
+      - name: runner
+        image: ghcr.io/actions/actions-runner:latest
+
+        # GPU and compute resources
+        resources:
+          limits:
+            nvidia.com/gpu: 1
+            memory: "64Gi"
+            cpu: "16"
+            ephemeral-storage: "200Gi"
+          requests:
+            nvidia.com/gpu: 1
+            memory: "32Gi"
+            cpu: "8"
+            ephemeral-storage: "100Gi"
+
+        # Environment variables
+        env:
+          - name: PYTORCH_CUDA_ALLOC_CONF
+            value: "expandable_segments:True"
+          - name: HF_TOKEN
+            valueFrom:
+              secretKeyRef:
+                name: hf-token
+                key: token
+                optional: true
+
+        # Work directory volume
+        volumeMounts:
+          - name: work
+            mountPath: /home/runner/_work
+
+    volumes:
+      - name: work
+        emptyDir:
+          sizeLimit: 500Gi
+
+# Runner labels that match workflow
+runnerLabels:
+  - self-hosted
+  - rhoai
+  - gpu
+  - L40S
