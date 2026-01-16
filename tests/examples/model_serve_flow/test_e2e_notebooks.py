@@ -428,3 +428,34 @@ class TestCompressedPerformanceBenchmarking:
         finally:
             # Always stop server
             server.stop()
+
+
+class TestCleanup:
+    """Utility test to clean up all test artifacts.
+
+    Run this to remove all downloaded models and results:
+        pytest tests/examples/model_serve_flow/test_e2e_notebooks.py::TestCleanup -v
+    """
+
+    def test_cleanup_all_artifacts(self, test_output_dir):
+        """Remove all test artifacts from the persistent directory."""
+        import shutil
+
+        if not test_output_dir.exists():
+            print(f"Nothing to clean up - {test_output_dir} does not exist")
+            return
+
+        # List what will be deleted
+        print(f"\nCleaning up artifacts at: {test_output_dir}")
+        for item in test_output_dir.iterdir():
+            if item.is_dir():
+                size = sum(f.stat().st_size for f in item.rglob("*") if f.is_file())
+                print(f"  Removing: {item.name} ({size / 1e9:.2f} GB)")
+            else:
+                print(f"  Removing: {item.name}")
+
+        # Remove everything
+        shutil.rmtree(test_output_dir)
+        test_output_dir.mkdir(parents=True, exist_ok=True)
+
+        print(f"Cleanup complete. Directory cleared: {test_output_dir}")
