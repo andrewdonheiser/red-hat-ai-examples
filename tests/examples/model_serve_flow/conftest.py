@@ -336,7 +336,11 @@ def run_guidellm_benchmark(
     except Exception as e:
         raise RuntimeError(f"Cannot connect to vLLM server: {e}")
 
-    # Use exact same parameters as the notebook (no --rate flag)
+    # Use exact same parameters as the notebook
+    # Set GUIDELLM_NUM_WORKERS=1 to reduce concurrent connections
+    env = os.environ.copy()
+    env["GUIDELLM_NUM_WORKERS"] = "1"
+
     cmd = [
         "guidellm",
         "benchmark",
@@ -352,7 +356,8 @@ def run_guidellm_benchmark(
     ]
 
     print(f"Running GuideLLM: {' '.join(cmd)}")
-    result = subprocess.run(cmd, capture_output=True, text=True, timeout=max_seconds + 300)
+    print(f"Environment: GUIDELLM_NUM_WORKERS=1")
+    result = subprocess.run(cmd, capture_output=True, text=True, timeout=max_seconds + 300, env=env)
 
     if result.returncode != 0:
         print(f"GuideLLM stdout: {result.stdout}")
