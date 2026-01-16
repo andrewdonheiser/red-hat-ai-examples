@@ -10,7 +10,6 @@ Dependency graph:
                 ├── test_compressed_accuracy (needs compressed_model)
                 └── test_compressed_performance_benchmark (needs compressed_model)
 """
-import json
 import os
 from pathlib import Path
 
@@ -52,7 +51,7 @@ class TestBaseAccuracyBenchmarking:
             "model_name": model_name,
             "base_model_path": str(base_model_dir / model_subdir),
             "base_results_dir": str(results_dir / "base_accuracy"),
-            "tasks": json.dumps(["arc_easy"]),  # Reduced for testing
+            "tasks": ["arc_easy"],  # Reduced for testing
         }
 
         # Patch notebook
@@ -289,7 +288,7 @@ class TestCompressedAccuracyBenchmarking:
         test_params = {
             "compressed_model_path": str(compressed_path),
             "compressed_results_dir": str(results_dir / "compressed_accuracy"),
-            "tasks": json.dumps(["arc_easy"]),
+            "tasks": ["arc_easy"],
         }
 
         patcher = notebook_patcher(notebook_path)
