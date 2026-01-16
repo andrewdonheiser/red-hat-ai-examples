@@ -337,12 +337,14 @@ def run_guidellm_benchmark(
         raise RuntimeError(f"Cannot connect to vLLM server: {e}")
 
     # Use exact same parameters as the notebook
+    # Sweep profile requires at least 2 rate points
     cmd = [
         "guidellm",
         "benchmark",
         "--target",
         target_url,
         "--profile", "sweep",
+        "--rate", "2",  # Minimum 2 rates required for sweep profile
         "--max-seconds",
         str(max_seconds),
         "--data",
