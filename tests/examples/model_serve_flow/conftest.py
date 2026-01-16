@@ -309,11 +309,16 @@ def vllm_server_factory():
 def run_guidellm_benchmark(
     target_url: str,
     output_path: Path,
-    max_seconds: int = 120,
-    prompt_tokens: int = 512,
-    output_tokens: int = 128,
+    max_seconds: int = 60,  # Reduced for testing (notebook uses 120)
+    prompt_tokens: int = 1024,
+    output_tokens: int = 512,
 ) -> Path:
-    """Run GuideLLM benchmark and return results path."""
+    """Run GuideLLM benchmark and return results path.
+
+    Uses the same parameters as the notebook:
+    guidellm benchmark --target "http://127.0.0.1:8000" --profile sweep \
+        --max-seconds 120 --data "prompt_tokens=1024,output_tokens=512"
+    """
     # Verify server is still responding before starting benchmark
     print(f"Verifying vLLM server at {target_url}...")
     try:
@@ -325,12 +330,13 @@ def run_guidellm_benchmark(
     except Exception as e:
         raise RuntimeError(f"Cannot connect to vLLM server: {e}")
 
-    # GuideLLM expects base URL, it adds /v1/completions itself
+    # Use exact same parameters as the notebook
     cmd = [
         "guidellm",
         "benchmark",
         "--target",
-        target_url,  # Just base URL, not /v1/completions
+        target_url,
+        "--profile", "sweep",
         "--max-seconds",
         str(max_seconds),
         "--data",
@@ -340,7 +346,7 @@ def run_guidellm_benchmark(
     ]
 
     print(f"Running GuideLLM: {' '.join(cmd)}")
-    result = subprocess.run(cmd, capture_output=True, text=True, timeout=max_seconds + 60)
+    result = subprocess.run(cmd, capture_output=True, text=True, timeout=max_seconds + 120)
 
     if result.returncode != 0:
         print(f"GuideLLM stdout: {result.stdout}")
