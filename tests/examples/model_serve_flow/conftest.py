@@ -315,13 +315,13 @@ def vllm_server_factory():
 def run_guidellm_benchmark(
     target_url: str,
     output_path: Path,
-    max_seconds: int = 60,  # Reduced for testing (notebook uses 120)
+    max_seconds: int = 120,  # Same as notebook
     prompt_tokens: int = 1024,
     output_tokens: int = 512,
 ) -> Path:
     """Run GuideLLM benchmark and return results path.
 
-    Uses the same parameters as the notebook:
+    Uses the exact same parameters as the notebook:
     guidellm benchmark --target "http://127.0.0.1:8000" --profile sweep \
         --max-seconds 120 --data "prompt_tokens=1024,output_tokens=512"
     """
@@ -336,15 +336,13 @@ def run_guidellm_benchmark(
     except Exception as e:
         raise RuntimeError(f"Cannot connect to vLLM server: {e}")
 
-    # Use exact same parameters as the notebook
-    # Sweep profile requires at least 2 rate points
+    # Use exact same parameters as the notebook (no --rate flag)
     cmd = [
         "guidellm",
         "benchmark",
         "--target",
         target_url,
         "--profile", "sweep",
-        "--rate", "2",  # Minimum 2 rates required for sweep profile
         "--max-seconds",
         str(max_seconds),
         "--data",
@@ -354,7 +352,7 @@ def run_guidellm_benchmark(
     ]
 
     print(f"Running GuideLLM: {' '.join(cmd)}")
-    result = subprocess.run(cmd, capture_output=True, text=True, timeout=max_seconds + 120)
+    result = subprocess.run(cmd, capture_output=True, text=True, timeout=max_seconds + 300)
 
     if result.returncode != 0:
         print(f"GuideLLM stdout: {result.stdout}")
