@@ -315,7 +315,6 @@ def run_guidellm_benchmark(
 ) -> Path:
     """Run GuideLLM benchmark and return results path."""
     # Verify server is still responding before starting benchmark
-    completions_url = f"{target_url}/v1/completions"
     print(f"Verifying vLLM server at {target_url}...")
     try:
         resp = requests.get(f"{target_url}/v1/models", timeout=10)
@@ -326,13 +325,12 @@ def run_guidellm_benchmark(
     except Exception as e:
         raise RuntimeError(f"Cannot connect to vLLM server: {e}")
 
-    # Use simpler benchmark settings for testing
+    # GuideLLM expects base URL, it adds /v1/completions itself
     cmd = [
         "guidellm",
         "benchmark",
         "--target",
-        completions_url,
-        "--backend", "openai_http",
+        target_url,  # Just base URL, not /v1/completions
         "--rate", "1",  # Start with 1 request/sec for testing
         "--max-seconds",
         str(max_seconds),
