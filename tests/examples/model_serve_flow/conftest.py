@@ -175,17 +175,51 @@ class VLLMServer:
         return self.url
 
     def _wait_for_ready(self, timeout: int):
-        """Wait for server health endpoint."""
+        """Wait for server to be fully ready.
+
+        Checks both health endpoint and models endpoint, then waits
+        for stabilization before returning.
+        """
         start = time.time()
+
+        # First, wait for health endpoint
+        print("Waiting for vLLM health endpoint...")
         while time.time() - start < timeout:
+            # Check if process crashed
+            if self.process.poll() is not None:
+                raise RuntimeError(
+                    f"vLLM server process exited with code {self.process.returncode}"
+                )
+
             try:
                 resp = requests.get(f"{self.url}/health", timeout=5)
                 if resp.status_code == 200:
-                    return
+                    print("Health endpoint ready")
+                    break
             except requests.exceptions.ConnectionError:
                 pass
             time.sleep(5)
-        raise TimeoutError(f"vLLM server not ready after {timeout}s")
+        else:
+            raise TimeoutError(f"vLLM health endpoint not ready after {timeout}s")
+
+        # Then, wait for models endpoint (required by GuideLLM)
+        print("Waiting for vLLM models endpoint...")
+        while time.time() - start < timeout:
+            try:
+                resp = requests.get(f"{self.url}/v1/models", timeout=5)
+                if resp.status_code == 200:
+                    print("Models endpoint ready")
+                    break
+            except requests.exceptions.ConnectionError:
+                pass
+            time.sleep(2)
+        else:
+            raise TimeoutError(f"vLLM models endpoint not ready after {timeout}s")
+
+        # Give server additional time to stabilize
+        print("Waiting 10s for server to stabilize...")
+        time.sleep(10)
+        print("vLLM server fully ready")
 
     def stop(self):
         """Stop the vLLM server."""
