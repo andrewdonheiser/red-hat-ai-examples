@@ -187,8 +187,13 @@ class VLLMServer:
         while time.time() - start < timeout:
             # Check if process crashed
             if self.process.poll() is not None:
+                # Capture output for debugging
+                output = ""
+                if self.process.stdout:
+                    output = self.process.stdout.read().decode("utf-8", errors="ignore")
                 raise RuntimeError(
-                    f"vLLM server process exited with code {self.process.returncode}"
+                    f"vLLM server process exited with code {self.process.returncode}\n"
+                    f"Server output:\n{output}"
                 )
 
             try:
