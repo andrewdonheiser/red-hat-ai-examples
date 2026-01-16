@@ -75,6 +75,165 @@ pytest tests/examples/knowledge_tuning/ -v
 | `TestCompressedAccuracyBenchmarking` | ✅ | ❌ | ❌ | Evaluates compressed model accuracy |
 | `TestCompressedPerformanceBenchmarking` | ✅ | ✅ | ✅ | Benchmarks compressed model performance |
 
+---
+
+### Detailed Test Descriptions
+
+#### 1. TestBaseAccuracyBenchmarking
+
+**Notebook:** `01_Base_Accuracy_Benchmarking/Base_Accuracy_Benchmarking.ipynb`
+
+**What it does:**
+- Downloads the base model from HuggingFace (`RedHatAI/Llama-3.1-8B-Instruct` by default)
+- Saves the model locally for subsequent tests
+- Runs accuracy evaluation using `lm-eval` on the `arc_easy` benchmark (reduced from full suite for faster testing)
+- Saves evaluation results as `results.pkl`
+
+**Pass criteria:**
+- ✅ Notebook executes without errors
+- ✅ Base model is saved to disk
+- ✅ `results.pkl` file is created with evaluation metrics
+
+**What passing means:**
+- The notebook code is syntactically correct and executable
+- Model loading and saving via `transformers` works correctly
+- The `lm-eval` integration functions properly
+- The evaluation pipeline produces valid output
+
+**What is NOT tested:**
+- ⚠️ Accuracy values are not validated (no threshold checks)
+- ⚠️ Full benchmark suite (only `arc_easy`, not MMLU, IFEval, HellaSwag)
+- ⚠️ Model quality or correctness of outputs
+
+---
+
+#### 2. TestBasePerformanceBenchmarking
+
+**Notebook:** `02_Base_Performance_Benchmarking/Base_Performance_Benchmarking.ipynb`
+
+**What it does:**
+- Starts a vLLM server with the base model (programmatically, not via notebook)
+- Runs GuideLLM benchmark for 60 seconds (reduced from production duration)
+- Executes notebook with shell commands skipped (vLLM/GuideLLM run externally)
+- Collects performance metrics (TTFT, ITL, throughput)
+
+**Pass criteria:**
+- ✅ vLLM server starts successfully and responds to health checks
+- ✅ GuideLLM benchmark completes without errors
+- ✅ Benchmark results JSON file is created
+- ✅ Notebook executes without errors
+
+**What passing means:**
+- The base model can be served via vLLM
+- The model responds to inference requests
+- GuideLLM can successfully benchmark the model
+- The notebook's analysis code works correctly
+
+**What is NOT tested:**
+- ⚠️ Performance thresholds (no min throughput or max latency checks)
+- ⚠️ Extended load testing (only 60 seconds vs production workloads)
+- ⚠️ Concurrent user simulation at scale
+- ⚠️ Memory leak detection over time
+
+---
+
+#### 3. TestModelCompression
+
+**Notebook:** `03_Model_Compression/Model_Compression.ipynb`
+
+**What it does:**
+- Loads the base model from the previous test
+- Applies INT8 W8A8 quantization using `llmcompressor`
+- Uses SmoothQuant + GPTQ modifiers with calibration data
+- Saves the compressed model to disk
+- Uses reduced calibration samples (64 vs 512) and sequence length (512 vs 1024) for faster testing
+
+**Pass criteria:**
+- ✅ Notebook executes without errors
+- ✅ Compressed model directory is created
+- ✅ `config.json` exists in the compressed model directory
+
+**What passing means:**
+- The quantization pipeline works end-to-end
+- `llmcompressor` successfully compresses the model
+- The compressed model has valid structure and configuration
+- Calibration data loading and processing works correctly
+
+**What is NOT tested:**
+- ⚠️ Model size reduction (no check that compressed < base)
+- ⚠️ Quantization quality (no perplexity or accuracy checks)
+- ⚠️ Full calibration (reduced samples may not represent production quality)
+- ⚠️ Different quantization schemes (only INT8 W8A8 tested)
+
+---
+
+#### 4. TestCompressedAccuracyBenchmarking
+
+**Notebook:** `04_Compressed_Accuracy_Benchmarking/Compressed_Accuracy_Benchmarking.ipynb`
+
+**What it does:**
+- Loads the compressed model from the previous test
+- Runs the same `lm-eval` benchmark (`arc_easy`) as the base model test
+- Saves evaluation results as `results.pkl`
+
+**Pass criteria:**
+- ✅ Notebook executes without errors
+- ✅ `results.pkl` file is created with evaluation metrics
+
+**What passing means:**
+- The compressed model can be loaded and used for inference
+- The quantized model produces valid outputs
+- The evaluation pipeline works with compressed models
+
+**What is NOT tested:**
+- ⚠️ Accuracy degradation (no comparison to base model results)
+- ⚠️ Acceptable accuracy threshold (no pass/fail based on accuracy)
+- ⚠️ Full benchmark suite (only `arc_easy`)
+
+---
+
+#### 5. TestCompressedPerformanceBenchmarking
+
+**Notebook:** `05_Compressed_Performance_Benchmarking/Compressed_Performance_Benchmarking.ipynb`
+
+**What it does:**
+- Starts a vLLM server with the compressed model (on port 8001)
+- Runs GuideLLM benchmark for 60 seconds
+- Executes notebook with shell commands skipped
+- Collects performance metrics
+
+**Pass criteria:**
+- ✅ vLLM server starts successfully with the compressed model
+- ✅ GuideLLM benchmark completes without errors
+- ✅ Benchmark results JSON file is created
+- ✅ Notebook executes without errors
+
+**What passing means:**
+- The compressed model can be served via vLLM
+- Quantized inference works correctly
+- Performance benchmarking tools work with compressed models
+
+**What is NOT tested:**
+- ⚠️ Performance improvement (no comparison to base model)
+- ⚠️ Throughput targets or latency SLAs
+- ⚠️ Memory usage reduction verification
+
+---
+
+### Known Limitations & Risks
+
+| Risk | Description | Mitigation |
+|------|-------------|------------|
+| **No accuracy thresholds** | Tests don't fail if model accuracy drops significantly | Manual review of results.pkl files |
+| **No performance comparison** | Tests don't compare base vs compressed metrics | Results saved for manual analysis |
+| **Reduced test scope** | Uses `arc_easy` only, not full benchmark suite | Full benchmarks run in production |
+| **Reduced calibration** | Compression uses fewer samples than recommended | May not reflect production quality |
+| **No regression detection** | No baseline to compare against previous runs | Implement result tracking over time |
+| **Single model tested** | Only tests default model, not all supported models | Run with different `TEST_MODEL_NAME` |
+| **Time-limited benchmarks** | Performance tests run only 60 seconds | Extended benchmarks in production |
+
+---
+
 **Additional Dependencies:**
 
 ```bash
@@ -115,11 +274,11 @@ pytest tests/examples/model_serve_flow/test_e2e_notebooks.py -v -k "Compression"
 **Test Dependency Graph:**
 
 ```text
-TestBaseAccuracyBenchmarking (GPU)
-    ├── TestBasePerformanceBenchmarking (GPU + vLLM + GuideLLM)
-    └── TestModelCompression (GPU)
-            ├── TestCompressedAccuracyBenchmarking (GPU)
-            └── TestCompressedPerformanceBenchmarking (GPU + vLLM + GuideLLM)
+TestBaseAccuracyBenchmarking (GPU) [~4 hours]
+    ├── TestBasePerformanceBenchmarking (GPU + vLLM + GuideLLM) [~1 hour]
+    └── TestModelCompression (GPU) [~2 hours]
+            ├── TestCompressedAccuracyBenchmarking (GPU) [~4 hours]
+            └── TestCompressedPerformanceBenchmarking (GPU + vLLM + GuideLLM) [~1 hour]
 ```
 
 ## Test Coverage
