@@ -69,11 +69,11 @@ pytest tests/examples/knowledge_tuning/ -v
 
 | Test | GPU | vLLM | GuideLLM | Description |
 |------|-----|------|----------|-------------|
-| `test_base_accuracy_full` | ✅ | ❌ | ❌ | Evaluates base model accuracy using lm-eval |
-| `test_base_performance_benchmark` | ✅ | ✅ | ✅ | Benchmarks base model inference performance |
-| `test_model_compression` | ✅ | ❌ | ❌ | Compresses model using llmcompressor |
-| `test_compressed_accuracy` | ✅ | ❌ | ❌ | Evaluates compressed model accuracy |
-| `test_compressed_performance_benchmark` | ✅ | ✅ | ✅ | Benchmarks compressed model performance |
+| `TestBaseAccuracyBenchmarking` | ✅ | ❌ | ❌ | Evaluates base model accuracy using lm-eval |
+| `TestBasePerformanceBenchmarking` | ✅ | ✅ | ✅ | Benchmarks base model inference performance |
+| `TestModelCompression` | ✅ | ❌ | ❌ | Compresses model using llmcompressor |
+| `TestCompressedAccuracyBenchmarking` | ✅ | ❌ | ❌ | Evaluates compressed model accuracy |
+| `TestCompressedPerformanceBenchmarking` | ✅ | ✅ | ✅ | Benchmarks compressed model performance |
 
 **Additional Dependencies:**
 
@@ -86,7 +86,7 @@ pip install torch transformers lm-eval accelerate llmcompressor datasets
 pip install vllm guidellm openai requests
 ```
 
-> **Note:** Performance tests (`*_performance_benchmark`) will be automatically skipped if vLLM or GuideLLM are not installed.
+> **Note:** Performance tests will be automatically skipped if vLLM or GuideLLM are not installed.
 
 **Run Tests:**
 
@@ -94,14 +94,15 @@ pip install vllm guidellm openai requests
 # Run all model-serve-flow E2E tests
 pytest tests/examples/model_serve_flow/ -v
 
-# Run only accuracy benchmarking tests (requires GPU + torch)
-pytest tests/examples/model_serve_flow/test_e2e_notebooks.py -v -k "Accuracy"
+# Run specific test class
+pytest tests/examples/model_serve_flow/test_e2e_notebooks.py::TestBaseAccuracyBenchmarking -v
+pytest tests/examples/model_serve_flow/test_e2e_notebooks.py::TestModelCompression -v
+pytest tests/examples/model_serve_flow/test_e2e_notebooks.py::TestBasePerformanceBenchmarking -v
 
-# Run only performance benchmarking tests (requires GPU + vLLM + GuideLLM)
-pytest tests/examples/model_serve_flow/test_e2e_notebooks.py -v -k "Performance"
-
-# Run model compression test (requires GPU + llmcompressor)
-pytest tests/examples/model_serve_flow/test_e2e_notebooks.py -v -k "Compression"
+# Run tests by pattern (matches multiple tests)
+pytest tests/examples/model_serve_flow/test_e2e_notebooks.py -v -k "Accuracy"      # Both accuracy tests
+pytest tests/examples/model_serve_flow/test_e2e_notebooks.py -v -k "Performance"   # Both performance tests
+pytest tests/examples/model_serve_flow/test_e2e_notebooks.py -v -k "Compression"   # Compression test only
 ```
 
 **Environment Variables:**
@@ -114,11 +115,11 @@ pytest tests/examples/model_serve_flow/test_e2e_notebooks.py -v -k "Compression"
 **Test Dependency Graph:**
 
 ```text
-test_base_accuracy_full (GPU)
-    ├── test_base_performance_benchmark (GPU + vLLM + GuideLLM)
-    └── test_model_compression (GPU)
-            ├── test_compressed_accuracy (GPU)
-            └── test_compressed_performance_benchmark (GPU + vLLM + GuideLLM)
+TestBaseAccuracyBenchmarking (GPU)
+    ├── TestBasePerformanceBenchmarking (GPU + vLLM + GuideLLM)
+    └── TestModelCompression (GPU)
+            ├── TestCompressedAccuracyBenchmarking (GPU)
+            └── TestCompressedPerformanceBenchmarking (GPU + vLLM + GuideLLM)
 ```
 
 ## Test Coverage
