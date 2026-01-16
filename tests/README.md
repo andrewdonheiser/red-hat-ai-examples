@@ -113,7 +113,7 @@ pytest tests/examples/knowledge_tuning/ -v
 
 **What it does:**
 - Starts a vLLM server with the base model (programmatically, not via notebook)
-- Runs GuideLLM benchmark for 60 seconds (reduced from production duration)
+- Runs GuideLLM benchmark for 120 seconds (same as notebook)
 - Executes notebook with shell commands skipped (vLLM/GuideLLM run externally)
 - Collects performance metrics (TTFT, ITL, throughput)
 
@@ -131,7 +131,7 @@ pytest tests/examples/knowledge_tuning/ -v
 
 **What is NOT tested:**
 - ⚠️ Performance thresholds (no min throughput or max latency checks)
-- ⚠️ Extended load testing (only 60 seconds vs production workloads)
+- ⚠️ Extended load testing (only 120 seconds vs production workloads)
 - ⚠️ Concurrent user simulation at scale
 - ⚠️ Memory leak detection over time
 
@@ -198,7 +198,7 @@ pytest tests/examples/knowledge_tuning/ -v
 
 **What it does:**
 - Starts a vLLM server with the compressed model (on port 8001)
-- Runs GuideLLM benchmark for 60 seconds
+- Runs GuideLLM benchmark for 120 seconds (same as notebook)
 - Executes notebook with shell commands skipped
 - Collects performance metrics
 
@@ -230,7 +230,7 @@ pytest tests/examples/knowledge_tuning/ -v
 | **Reduced calibration** | Compression uses fewer samples than recommended | May not reflect production quality |
 | **No regression detection** | No baseline to compare against previous runs | Implement result tracking over time |
 | **Single model tested** | Only tests default model, not all supported models | Run with different `TEST_MODEL_NAME` |
-| **Time-limited benchmarks** | Performance tests run only 60 seconds | Extended benchmarks in production |
+| **Time-limited benchmarks** | Performance tests run 120 seconds (same as notebook) | Extended benchmarks in production |
 
 ---
 

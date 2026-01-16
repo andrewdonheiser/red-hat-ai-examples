@@ -164,7 +164,7 @@ class TestBasePerformanceBenchmarking:
             guidellm_runner(
                 target_url=server_url,
                 output_path=benchmark_output,
-                max_seconds=60,  # Reduced for testing
+                max_seconds=120,  # Same as notebook
             )
 
             # Patch and run notebook for results loading/verification
@@ -389,7 +389,7 @@ class TestCompressedPerformanceBenchmarking:
             guidellm_runner(
                 target_url=server_url,
                 output_path=benchmark_output,
-                max_seconds=60,
+                max_seconds=120,  # Same as notebook
             )
 
             # Run notebook for verification
