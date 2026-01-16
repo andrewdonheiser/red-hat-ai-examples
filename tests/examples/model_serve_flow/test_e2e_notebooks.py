@@ -171,6 +171,7 @@ class TestBasePerformanceBenchmarking:
             test_params = {
                 "base_model_path": str(base_path),
                 "vllm_target": server_url,
+                "benchmark_results_path": str(benchmark_output),
             }
 
             patcher = notebook_patcher(notebook_path)
@@ -178,6 +179,8 @@ class TestBasePerformanceBenchmarking:
             patcher.replace_hardcoded_paths(
                 {
                     "base_model_path": "base_model_path",
+                    # Replace the results path so notebook finds our output
+                    "../results/base_performance_benchmarks.json": "benchmark_results_path",
                 }
             )
             # Skip vLLM serve and GuideLLM benchmark cells (we ran them externally)
@@ -396,6 +399,7 @@ class TestCompressedPerformanceBenchmarking:
             test_params = {
                 "compressed_model_path": str(compressed_path),
                 "vllm_target": server_url,
+                "benchmark_results_path": str(benchmark_output),
             }
 
             patcher = notebook_patcher(notebook_path)
@@ -403,6 +407,8 @@ class TestCompressedPerformanceBenchmarking:
             patcher.replace_hardcoded_paths(
                 {
                     "compressed_model_path": "compressed_model_path",
+                    # Replace the results path so notebook finds our output
+                    "../results/compressed_performance_benchmarks.json": "benchmark_results_path",
                 }
             )
             patcher.skip_cells_matching(
