@@ -242,7 +242,8 @@ pip install papermill nbformat ipykernel
 pip install torch transformers lm-eval accelerate llmcompressor datasets
 
 # Install serving dependencies for performance tests (optional)
-pip install vllm guidellm openai requests
+# Pin versions to match notebook requirements
+pip install vllm>=0.11.0 guidellm==0.5.0 openai==2.8.1 requests
 ```
 
 > **Note:** Performance tests will be automatically skipped if vLLM or GuideLLM are not installed.
