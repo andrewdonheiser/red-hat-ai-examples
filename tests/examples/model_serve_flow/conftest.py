@@ -25,6 +25,35 @@ def pytest_configure(config):
     config.addinivalue_line("markers", "timeout: test timeout in seconds")
 
 
+def _is_tool_available(tool_name: str) -> bool:
+    """Check if a command-line tool is available."""
+    try:
+        result = subprocess.run(
+            [tool_name, "--version"],
+            capture_output=True,
+            timeout=10,
+        )
+        return result.returncode == 0
+    except (FileNotFoundError, subprocess.TimeoutExpired):
+        return False
+
+
+def pytest_collection_modifyitems(config, items):
+    """Skip tests based on available tools."""
+    # Check tool availability once
+    vllm_available = _is_tool_available("vllm")
+    guidellm_available = _is_tool_available("guidellm")
+
+    skip_vllm = pytest.mark.skip(reason="vLLM not installed")
+    skip_guidellm = pytest.mark.skip(reason="GuideLLM not installed")
+
+    for item in items:
+        if "requires_vllm" in item.keywords and not vllm_available:
+            item.add_marker(skip_vllm)
+        if "requires_guidellm" in item.keywords and not guidellm_available:
+            item.add_marker(skip_guidellm)
+
+
 # Default timeout for e2e tests (4 hours for accuracy, 1 hour for performance)
 DEFAULT_ACCURACY_TIMEOUT = 4 * 60 * 60  # 4 hours in seconds
 DEFAULT_PERFORMANCE_TIMEOUT = 60 * 60  # 1 hour in seconds

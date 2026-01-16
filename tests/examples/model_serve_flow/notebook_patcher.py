@@ -68,13 +68,35 @@ class NotebookPatcher:
             modified = False
 
             for var_name, param_name in replacements.items():
-                # Match patterns like: var_name = "..." or var_name = f"..."
+                # Match patterns for variable assignments
+                # Order matters: try more specific patterns first
+
+                # Pattern 1: Multi-line parenthesized string assignment
+                # e.g., var = (\n    "value"\n)
+                multiline_pattern = (
+                    rf'^({var_name}\s*=\s*\(\s*\n\s*["\'][^"\']*["\']\s*\n\s*\))'
+                )
+                if re.search(multiline_pattern, source, re.MULTILINE):
+                    match = re.search(multiline_pattern, source, re.MULTILINE)
+                    original = match.group(0)
+                    # Comment out each line of the original
+                    commented = "\n".join(
+                        f"# {line}" for line in original.split("\n")
+                    )
+                    replacement = (
+                        f"{commented}\n{var_name} = {param_name}  # Injected by test"
+                    )
+                    source = source.replace(original, replacement, 1)
+                    modified = True
+                    continue
+
+                # Pattern 2: Single-line string assignments
                 patterns = [
                     rf'^({var_name}\s*=\s*)f?"[^"]*"',  # var = "value" or f"value"
                     rf"^({var_name}\s*=\s*)f?'[^']*'",  # var = 'value'
-                    rf"^({var_name}\s*=\s*)[^#\n]+",  # var = expression
                 ]
 
+                pattern_matched = False
                 for pattern in patterns:
                     if re.search(pattern, source, re.MULTILINE):
                         # Comment out original and add parameterized version
@@ -86,7 +108,24 @@ class NotebookPatcher:
                             flags=re.MULTILINE,
                         )
                         modified = True
+                        pattern_matched = True
                         break
+
+                if pattern_matched:
+                    continue
+
+                # Pattern 3: Generic expression (fallback) - but skip if it looks
+                # like a multi-line assignment starting with (
+                generic_pattern = rf"^({var_name}\s*=\s*)([^#\n(]+)$"
+                if re.search(generic_pattern, source, re.MULTILINE):
+                    source = re.sub(
+                        generic_pattern,
+                        f"# Original: \\g<0>\n{var_name} = {param_name}  # Injected by test",
+                        source,
+                        count=1,
+                        flags=re.MULTILINE,
+                    )
+                    modified = True
 
             if modified:
                 cell.source = source

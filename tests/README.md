@@ -28,9 +28,15 @@ pytest -n auto
 
 ## Test Categories
 
+| Test Suite | GPU Required | Description |
+|------------|--------------|-------------|
+| `tests/validation/` | ❌ No | Notebook structure, syntax, metadata validation |
+| `tests/examples/knowledge_tuning/` | ❌ No | Knowledge tuning smoke tests |
+| `tests/examples/model_serve_flow/` | ✅ Yes | Model compression & benchmarking E2E tests |
+
 ### Validation Tests (`tests/validation/`)
 
-Repository-wide tests that validate all notebooks automatically. No GPU required.
+Repository-wide tests that validate all notebooks automatically. **No GPU required.**
 
 ```bash
 # Run all validation tests
@@ -50,25 +56,37 @@ Tests for specific examples in the repository.
 
 #### Knowledge Tuning Tests
 
+**No GPU required.**
+
 ```bash
-# Run knowledge tuning smoke tests (no GPU required)
+# Run knowledge tuning smoke tests
 pytest tests/examples/knowledge_tuning/ -v
 ```
 
 #### Model Serve Flow E2E Tests
 
-These tests require a GPU with sufficient VRAM (~16GB+) to run the full model evaluation pipeline.
+**⚠️ GPU Required** - These tests require a GPU with sufficient VRAM (~16GB+) to run the full model evaluation pipeline.
+
+| Test | GPU | vLLM | GuideLLM | Description |
+|------|-----|------|----------|-------------|
+| `test_base_accuracy_full` | ✅ | ❌ | ❌ | Evaluates base model accuracy using lm-eval |
+| `test_base_performance_benchmark` | ✅ | ✅ | ✅ | Benchmarks base model inference performance |
+| `test_model_compression` | ✅ | ❌ | ❌ | Compresses model using llmcompressor |
+| `test_compressed_accuracy` | ✅ | ❌ | ❌ | Evaluates compressed model accuracy |
+| `test_compressed_performance_benchmark` | ✅ | ✅ | ✅ | Benchmarks compressed model performance |
 
 **Additional Dependencies:**
 
 ```bash
-# Install ML dependencies for accuracy tests
+# Install ML dependencies for accuracy/compression tests (GPU required)
 pip install papermill nbformat ipykernel
 pip install torch transformers lm-eval accelerate llmcompressor datasets
 
-# Install serving dependencies for performance tests
+# Install serving dependencies for performance tests (optional)
 pip install vllm guidellm openai requests
 ```
+
+> **Note:** Performance tests (`*_performance_benchmark`) will be automatically skipped if vLLM or GuideLLM are not installed.
 
 **Run Tests:**
 
@@ -76,13 +94,13 @@ pip install vllm guidellm openai requests
 # Run all model-serve-flow E2E tests
 pytest tests/examples/model_serve_flow/ -v
 
-# Run only accuracy benchmarking tests
+# Run only accuracy benchmarking tests (requires GPU + torch)
 pytest tests/examples/model_serve_flow/test_e2e_notebooks.py -v -k "Accuracy"
 
-# Run only performance benchmarking tests
+# Run only performance benchmarking tests (requires GPU + vLLM + GuideLLM)
 pytest tests/examples/model_serve_flow/test_e2e_notebooks.py -v -k "Performance"
 
-# Run model compression test
+# Run model compression test (requires GPU + llmcompressor)
 pytest tests/examples/model_serve_flow/test_e2e_notebooks.py -v -k "Compression"
 ```
 
@@ -96,11 +114,11 @@ pytest tests/examples/model_serve_flow/test_e2e_notebooks.py -v -k "Compression"
 **Test Dependency Graph:**
 
 ```text
-test_base_accuracy_full
-    ├── test_base_performance_benchmark (needs base_model)
-    └── test_model_compression (needs base_model)
-            ├── test_compressed_accuracy (needs compressed_model)
-            └── test_compressed_performance_benchmark (needs compressed_model)
+test_base_accuracy_full (GPU)
+    ├── test_base_performance_benchmark (GPU + vLLM + GuideLLM)
+    └── test_model_compression (GPU)
+            ├── test_compressed_accuracy (GPU)
+            └── test_compressed_performance_benchmark (GPU + vLLM + GuideLLM)
 ```
 
 ## Test Coverage
