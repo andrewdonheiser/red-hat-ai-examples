@@ -37,7 +37,8 @@ jobs:
         run: |
           pip install -e ".[test]"
           pip install papermill nbformat ipykernel
-          pip install torch transformers lm-eval accelerate llmcompressor datasets
+          # Pin llmcompressor to match notebook requirements
+          pip install torch transformers lm-eval accelerate llmcompressor==0.8.1 datasets
 
       - name: Verify GPU
         run: |

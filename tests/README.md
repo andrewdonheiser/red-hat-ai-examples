@@ -239,7 +239,8 @@ pytest tests/examples/knowledge_tuning/ -v
 ```bash
 # Install ML dependencies for accuracy/compression tests (GPU required)
 pip install papermill nbformat ipykernel
-pip install torch transformers lm-eval accelerate llmcompressor datasets
+# Pin llmcompressor to match notebook requirements
+pip install torch transformers lm-eval accelerate llmcompressor==0.8.1 datasets
 
 # Install serving dependencies for performance tests (optional)
 # Pin versions to match notebook requirements
