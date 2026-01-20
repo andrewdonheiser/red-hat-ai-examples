@@ -135,7 +135,7 @@ class NotebookPatcher:
     def skip_cells_matching(self, patterns: list[str]) -> "NotebookPatcher":
         """Skip cells containing specific patterns (e.g., pip install, manual instructions).
 
-        Wraps matching cells in 'if False:' to skip execution.
+        Converts matching cells to 'raw' type so they're not executed.
         """
         for cell in self.notebook.cells:
             if cell.cell_type != "code":
@@ -143,10 +143,9 @@ class NotebookPatcher:
 
             for pattern in patterns:
                 if re.search(pattern, cell.source):
-                    cell.source = (
-                        "# Skipped by test automation\nif False:\n    "
-                        + cell.source.replace("\n", "\n    ")
-                    )
+                    # Convert to raw cell so it's not executed
+                    cell.cell_type = "raw"
+                    cell.source = f"# Skipped by test automation\n{cell.source}"
                     break
 
         return self
