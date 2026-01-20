@@ -28,14 +28,16 @@ def pytest_configure(config):
 def _is_tool_available(tool_name: str) -> bool:
     """Check if a command-line tool is available."""
     try:
-        # vLLM uses --help, not --version
-        flag = "--help" if tool_name == "vllm" else "--version"
-        result = subprocess.run(
-            [tool_name, flag],
-            capture_output=True,
-            timeout=10,
-        )
-        return result.returncode == 0
+        # Try --help first (works for vllm), then --version as fallback
+        for flag in ["--help", "--version"]:
+            result = subprocess.run(
+                [tool_name, flag],
+                capture_output=True,
+                timeout=10,
+            )
+            if result.returncode == 0:
+                return True
+        return False
     except (FileNotFoundError, subprocess.TimeoutExpired):
         return False
 
