@@ -28,11 +28,18 @@ guidellm benchmark \
 ```
 
 ### Package Versions
-Pin versions to match notebook pyproject.toml files:
-- `vllm>=0.11.0`
-- `guidellm==0.5.0`
-- `openai==2.8.1`
-- `llmcompressor==0.8.1`
+Install from notebook pyproject.toml files to get exact versions:
+```bash
+pip install -e examples/model-serve-flow/01_Base_Accuracy_Benchmarking/
+pip install -e examples/model-serve-flow/02_Base_Performance_Benchmarking/
+pip install -e examples/model-serve-flow/03_Model_Compression/
+```
+
+Key versions defined in notebooks:
+- `torch>=2.8.0`, `transformers>=4.55.2` (accuracy notebooks)
+- `lm-eval[ifeval]==0.4.9.2` (accuracy notebooks)
+- `llmcompressor==0.8.1` (compression notebook)
+- `vllm>=0.11.0`, `guidellm==0.5.0`, `openai==2.8.1` (performance notebooks)
 
 ### Timeouts
 Use generous timeouts to handle slower hardware:

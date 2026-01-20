@@ -236,16 +236,26 @@ pytest tests/examples/knowledge_tuning/ -v
 
 **Additional Dependencies:**
 
-```bash
-# Install ML dependencies for accuracy/compression tests (GPU required)
-pip install papermill nbformat ipykernel
-# Pin llmcompressor to match notebook requirements
-pip install torch transformers lm-eval accelerate llmcompressor==0.8.1 datasets
+Install from the notebook `pyproject.toml` files to get the exact same versions:
 
-# Install serving dependencies for performance tests (optional)
-# Pin versions to match notebook requirements
-pip install vllm>=0.11.0 guidellm==0.5.0 openai==2.8.1 requests
+```bash
+# Install test framework
+pip install papermill nbformat ipykernel
+
+# Install accuracy/compression dependencies from notebook pyproject.toml (GPU required)
+pip install -e examples/model-serve-flow/01_Base_Accuracy_Benchmarking/
+pip install -e examples/model-serve-flow/03_Model_Compression/
+pip install accelerate datasets
+
+# Install performance dependencies from notebook pyproject.toml (optional)
+pip install -e examples/model-serve-flow/02_Base_Performance_Benchmarking/
+pip install requests
 ```
+
+This ensures you have the exact same package versions as the notebooks:
+- `torch>=2.8.0`, `transformers>=4.55.2`, `lm-eval[ifeval]==0.4.9.2`
+- `llmcompressor==0.8.1`
+- `vllm>=0.11.0`, `guidellm==0.5.0`, `openai==2.8.1`
 
 > **Note:** Performance tests will be automatically skipped if vLLM or GuideLLM are not installed.
 
