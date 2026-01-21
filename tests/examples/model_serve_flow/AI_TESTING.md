@@ -1,4 +1,4 @@
-# Project Rules for red-hat-ai-examples
+# AI Testing Guidelines for Model Serve Flow
 
 ## Test Parameter Consistency
 
@@ -50,15 +50,3 @@ Use generous timeouts to handle slower hardware:
 - Tests should validate that notebooks work as documented
 - Changing parameters means we're not testing what users will actually run
 - Version mismatches can cause different behavior (e.g., GuideLLM sweep profile changes)
-
-## Database Changes
-- Ensure migrations exist for all database schema changes
-- Update backup/restore scripts when schema changes
-
-## Documentation
-- Keep documentation up to date with code changes
-- If there's an established style for similar implementations, follow it
-
-## Code Style
-- Follow existing patterns in the codebase
-- Keep implementations uniform across similar features
