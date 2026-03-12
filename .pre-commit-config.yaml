@@ -23,7 +23,7 @@ repos:
 
   # Secret scanning with Gitleaks
   - repo: https://github.com/gitleaks/gitleaks
-    rev: v8.29.0
+    rev: v8.30.1
     hooks:
       - id: gitleaks
 
